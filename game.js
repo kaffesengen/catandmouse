@@ -1,178 +1,192 @@
-// --- 1. KONFIGURASJON OG VARIABLER ---
+// --- KONFIGURASJON ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+canvas.width = 800;
+canvas.height = 600;
 
-const mouseSettings = { acc: 0.8, topSpeed: 5, friction: 0.9, radius: 15 };
-const catSettings = { acc: 0.25, topSpeed: 8, friction: 0.96, radius: 22 };
+const DIM = { cat: 48, mouse: 32, cheese: 24, trap: 32, wall: 32, box: 32 };
+const mouseSettings = { acc: 0.8, topSpeed: 5, friction: 0.9 };
+const catSettings = { acc: 0.25, topSpeed: 8, friction: 0.96 };
+
+const sprites = {
+    cat: new Image(), mouse: new Image(), cheese: new Image(),
+    trap: new Image(), wall: new Image(), box: new Image()
+};
+sprites.cat.src = 'assets/cat.png';
+sprites.mouse.src = 'assets/mouse.png';
+sprites.cheese.src = 'assets/cheese.png';
+sprites.trap.src = 'assets/trap.png';
+sprites.wall.src = 'assets/wall.png';
+sprites.box.src = 'assets/box.png';
 
 let gameState = {
     isStarted: false,
     myId: null,
-    players: {}, // Inneholder alle spillere: { id: {x, y, vx, vy, role, color, score, name, frozen} }
+    players: {},
     obstacles: [],
-    cheese: [],
+    cheese: { x: 0, y: 0 },
     traps: [],
     seed: 0,
     scoreGoal: 10,
-    gameTimer: 120 // 2 minutter til neste katt-bytte
+    roleTimer: 120
 };
 
 const keys = {};
 window.addEventListener('keydown', e => keys[e.key] = true);
 window.addEventListener('keyup', e => keys[e.key] = false);
 
-// --- 2. HJELPEFUNKSJONER (SEED & MATTE) ---
-function seededRandom(seed) {
-    const x = Math.sin(seed) * 10000;
+// --- MATTE & ARENA ---
+function seededRandom(s) {
+    const x = Math.sin(s) * 10000;
     return x - Math.floor(x);
 }
 
-// --- 3. SPILL-LOGIKK ---
-
-// Generer banen likt for alle
 function initArena(seed) {
     gameState.seed = seed;
     gameState.obstacles = [];
     let s = seed;
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 15; i++) {
+        const type = seededRandom(s++) > 0.5 ? 'wall' : 'box';
         gameState.obstacles.push({
-            x: seededRandom(s++) * (canvas.width - 100),
-            y: seededRandom(s++) * (canvas.height - 100),
-            w: 40 + seededRandom(s++) * 120,
-            h: 40 + seededRandom(s++) * 120
+            x: Math.floor(seededRandom(s++) * (canvas.width / 32)) * 32,
+            y: Math.floor(seededRandom(s++) * (canvas.height / 32)) * 32,
+            w: 32 * (1 + Math.floor(seededRandom(s++) * 3)),
+            h: 32 * (1 + Math.floor(seededRandom(s++) * 2)),
+            type: type
         });
     }
-    spawnCheese();
+    spawnCheese(seed + 99);
 }
 
-function spawnCheese() {
-    let s = gameState.seed + Date.now(); // Tilfeldig men basert på tid
+function spawnCheese(s) {
     gameState.cheese = {
-        x: seededRandom(s++) * (canvas.width - 20),
-        y: seededRandom(s++) * (canvas.height - 20)
+        x: 50 + seededRandom(s) * (canvas.width - 100),
+        y: 50 + seededRandom(s + 1) * (canvas.height - 100)
     };
 }
 
+// --- HOVED-LOOP ---
 function update() {
     if (!gameState.isStarted || !gameState.myId) return;
 
     const me = gameState.players[gameState.myId];
-    if (!me || me.frozen > 0) {
-        if (me && me.frozen > 0) me.frozen -= 1/60; // Tell ned frys (60fps)
+    if (!me) return;
+
+    // Frys-logikk
+    if (me.frozen > 0) {
+        me.frozen -= 1/60;
+        syncPosition(me);
         return;
     }
 
     const settings = me.role === 'cat' ? catSettings : mouseSettings;
 
     // Bevegelse
+    let oldX = me.x;
+    let oldY = me.y;
+
     if (keys['ArrowUp'] || keys['w']) me.vy -= settings.acc;
     if (keys['ArrowDown'] || keys['s']) me.vy += settings.acc;
     if (keys['ArrowLeft'] || keys['a']) me.vx -= settings.acc;
     if (keys['ArrowRight'] || keys['d']) me.vx += settings.acc;
 
-    // Friksjon og fart
     me.vx *= settings.friction;
     me.vy *= settings.friction;
-    
-    let speed = Math.sqrt(me.vx**2 + me.vy**2);
-    if (speed > settings.topSpeed) {
-        me.vx = (me.vx / speed) * settings.topSpeed;
-        me.vy = (me.vy / speed) * settings.topSpeed;
-    }
-
-    // Lagre gammel posisjon for kollisjonshåndtering
-    let oldX = me.x;
-    let oldY = me.y;
-
     me.x += me.vx;
     me.y += me.vy;
 
-    // Veggkollisjon
+    // Kollisjon vegger og hindre
     if (me.x < 0 || me.x > canvas.width) me.x = oldX;
     if (me.y < 0 || me.y > canvas.height) me.y = oldY;
 
-    // Hindring-kollisjon (Enkel boks)
     gameState.obstacles.forEach(obs => {
-        if (me.x + settings.radius > obs.x && me.x - settings.radius < obs.x + obs.w &&
-            me.y + settings.radius > obs.y && me.y - settings.radius < obs.y + obs.h) {
-            me.x = oldX;
-            me.y = oldY;
-            me.vx = 0; me.vy = 0;
+        if (me.x + 10 > obs.x && me.x - 10 < obs.x + obs.w &&
+            me.y + 10 > obs.y && me.y - 10 < obs.y + obs.h) {
+            me.x = oldX; me.y = oldY;
         }
     });
 
-    // Sjekk om mus tar ost
+    // Animasjon-logikk
+    if (Math.abs(me.vx) > 0.1 || Math.abs(me.vy) > 0.1) {
+        me.gameFrame = (me.gameFrame || 0) + 1;
+        me.frameX = Math.floor(me.gameFrame / 7) % 4; // Antar 4 frames
+    }
+
+    // Sjekk ost (kun mus)
     if (me.role === 'mouse') {
-        let dist = Math.hypot(me.x - gameState.cheese.x, me.y - gameState.cheese.y);
-        if (dist < 30) {
+        const dist = Math.hypot(me.x - gameState.cheese.x, me.y - gameState.cheese.y);
+        if (dist < 25) {
             me.score++;
-            spawnCheese();
-            broadcastGameState(); // Send beskjed til andre om ny score/ost
+            spawnCheese(Date.now());
+            if (isHost) broadcastScore(me.id, me.score, gameState.cheese);
         }
     }
 
-    // Katte-triks: Slipp felle (Eks: Trykk Mellomrom)
-    if (me.role === 'cat' && keys[' ']) {
-        // Logikk for å legge felle her
-    }
+    // Sjekk feller
+    gameState.traps.forEach((trap, index) => {
+        const dist = Math.hypot(me.x - trap.x, me.y - trap.y);
+        if (me.role === 'mouse' && dist < 20) {
+            me.frozen = 5;
+            me.x = Math.random() * canvas.width;
+            me.y = Math.random() * canvas.height;
+            gameState.traps.splice(index, 1);
+        }
+    });
 
-    // Send din posisjon til de andre (kalles fra network.js)
     syncPosition(me);
 }
 
-// --- 4. TEGNING (DRAW) ---
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Tegn hindere
-    ctx.fillStyle = "#4a4e69";
+    // 1. Tegn hinder
     gameState.obstacles.forEach(obs => {
-        ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-        // Litt 3D-effekt
-        ctx.strokeStyle = "#222";
-        ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+        const img = obs.type === 'wall' ? sprites.wall : sprites.box;
+        for (let x = 0; x < obs.w; x += 32) {
+            for (let y = 0; y < obs.h; y += 32) {
+                ctx.drawImage(img, obs.x + x, obs.y + y, 32, 32);
+            }
+        }
     });
 
-    // Tegn ost
-    ctx.font = "24px serif";
-    ctx.fillText("🧀", gameState.cheese.x - 12, gameState.cheese.y + 12);
+    // 2. Tegn feller og ost
+    gameState.traps.forEach(t => ctx.drawImage(sprites.trap, t.x - 16, t.y - 16, 32, 32));
+    ctx.drawImage(sprites.cheese, gameState.cheese.x - 12, gameState.cheese.y - 12, 24, 24);
 
-    // Tegn spillere
+    // 3. Tegn spillere
     Object.values(gameState.players).forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.role === 'cat' ? 22 : 15, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
-        ctx.fill();
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = p.role === 'cat' ? 'red' : 'white';
-        ctx.stroke();
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        if (p.vx < 0) ctx.scale(-1, 1);
 
-        // Navn og frys-nedtelling
-        ctx.fillStyle = "black";
-        ctx.font = "12px Arial";
+        if (p.role === 'cat') {
+            const fx = (p.frameX || 0) * DIM.cat;
+            ctx.drawImage(sprites.cat, fx, 0, DIM.cat, DIM.cat, -24, -24, 48, 48);
+        } else {
+            ctx.drawImage(sprites.mouse, -16, -16, 32, 32);
+        }
+        ctx.restore();
+
+        // Navn og nedtelling
+        ctx.fillStyle = p.frozen > 0 ? "cyan" : "white";
+        ctx.font = "bold 12px Arial";
         ctx.textAlign = "center";
         let label = p.name;
         if (p.frozen > 0) label = `❄️ ${Math.ceil(p.frozen)}s`;
         ctx.fillText(label, p.x, p.y - 30);
     });
 
-    updateLeaderboard();
+    updateLeaderboardUI();
     requestAnimationFrame(draw);
 }
 
-// --- 5. UI OPPDATERING ---
-function updateLeaderboard() {
-    const list = Object.values(gameState.players).sort((a, b) => b.score - a.score);
-    const container = document.getElementById('leaderboard');
-    container.innerHTML = `<h4>Mål: ${gameState.scoreGoal}</h4>`;
-    list.forEach(p => {
-        container.innerHTML += `<div style="color:${p.color}">${p.name}: ${p.score}</div>`;
-    });
+function updateLeaderboardUI() {
+    const lb = document.getElementById('leaderboard');
+    if (!lb) return;
+    const sorted = Object.values(gameState.players).sort((a,b) => b.score - a.score);
+    lb.innerHTML = sorted.map(p => `<div style="color:${p.color}">${p.name}: ${p.score}</div>`).join('');
 }
 
 // Start loopen
-function gameLoop() {
-    update();
-    draw();
-}
-requestAnimationFrame(gameLoop);
+draw();
+setInterval(update, 1000/60);
