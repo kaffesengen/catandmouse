@@ -1,1 +1,15 @@
-
+{
+  "short_name": "Musejakt",
+  "name": "Musejakt: Katt mot Mus",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "theme_color": "#ffcc00"
+}
