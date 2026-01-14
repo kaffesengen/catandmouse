@@ -1,51 +1,56 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const WORLD = { width: 3000, height: 2500 };
-let camera = { x: 0, y: 0, zoom: 1.5 }; // Zoomer inn litt mer
+let camera = { x: 0, y: 0, zoom: 1.5 };
 
-const DIM = { cat: 48, mouse: 32, cheese: 24, trap: 32, wall: 32 };
-const mouseSettings = { acc: 0.9, topSpeed: 6, friction: 0.85 };
-const catSettings = { acc: 0.25, topSpeed: 9, friction: 0.96 };
+const DIM = { cat: 64, mouse: 40, cheese: 30, wall: 32 };
+const mouseSettings = { acc: 1.0, topSpeed: 7, friction: 0.88 };
+const catSettings = { acc: 0.35, topSpeed: 10, friction: 0.95 };
 
 const sprites = { cat: new Image(), mouse: new Image(), cheese: new Image(), trap: new Image(), wall: new Image(), box: new Image() };
 sprites.cat.src = 'assets/cat.png'; sprites.mouse.src = 'assets/mouse.png'; sprites.cheese.src = 'assets/cheese.png';
 sprites.trap.src = 'assets/trap.png'; sprites.wall.src = 'assets/wall.png'; sprites.box.src = 'assets/box.png';
 
+const sounds = { tag: document.getElementById('snd-tag'), cheese: document.getElementById('snd-cheese') };
+
 let gameState = { isStarted: false, myId: null, players: {}, obstacles: [], cheese: {x:0,y:0}, traps: [], roleTimer: 120 };
 const keys = {};
-
-// Event listeners for mobilknapper
 const mobileKeys = { up: false, down: false, left: false, right: false };
+
+// Oppsett for mobilknapper
 const setupBtn = (id, key) => {
     const btn = document.getElementById(id);
-    if(!btn) return;
-    btn.onmousedown = btn.ontouchstart = () => { mobileKeys[key] = true; };
-    btn.onmouseup = btn.ontouchend = () => { mobileKeys[key] = false; };
+    btn.ontouchstart = (e) => { e.preventDefault(); mobileKeys[key] = true; };
+    btn.ontouchend = (e) => { e.preventDefault(); mobileKeys[key] = false; };
 };
 setupBtn('btn-up', 'up'); setupBtn('btn-down', 'down'); setupBtn('btn-left', 'left'); setupBtn('btn-right', 'right');
-document.getElementById('btn-trap').onclick = () => { window.dispatchEvent(new KeyboardEvent('keydown', {code: 'Space'})); };
 
 window.onkeydown = e => keys[e.key.toLowerCase()] = true;
 window.onkeyup = e => keys[e.key.toLowerCase()] = false;
 
-function seededRandom(s) { return (Math.sin(s) * 10000) % 1; }
-
 function initArena(seed) {
     gameState.obstacles = [];
-    let s = seed;
-    // Boks-spredning
-    for(let i=0; i<30; i++) {
-        gameState.obstacles.push({ x: seededRandom(s++)*WORLD.width, y: seededRandom(s++)*WORLD.height, w: 32, h: 32, type: 'box' });
-    }
-    // Vegg-generering (linjer)
-    for(let i=0; i<20; i++) {
-        let x = Math.floor(seededRandom(s++)*WORLD.width/32)*32;
-        let y = Math.floor(seededRandom(s++)*WORLD.height/32)*32;
-        let isVert = seededRandom(s++) > 0.5;
-        let len = 4 + Math.floor(seededRandom(s++)*6);
-        for(let j=0; j<len; j++) {
-            gameState.obstacles.push({ x: x + (isVert?0:j*32), y: y + (isVert?j*32:0), w: 32, h: 32, type: 'wall' });
+    let s = seed * 12345;
+    const rng = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+
+    // Generer vegger i rette linjer
+    for(let i=0; i<25; i++) {
+        let x = Math.floor(rng() * (WORLD.width / 32)) * 32;
+        let y = Math.floor(rng() * (WORLD.height / 32)) * 32;
+        let isHorizontal = rng() > 0.5;
+        let length = 4 + Math.floor(rng() * 10);
+
+        for(let j=0; j<length; j++) {
+            let wx = isHorizontal ? x + (j * 32) : x;
+            let wy = isHorizontal ? y : y + (j * 32);
+            if(wx < WORLD.width - 32 && wy < WORLD.height - 32) {
+                gameState.obstacles.push({ x: wx, y: wy, w: 32, h: 32, type: 'wall' });
+            }
         }
+    }
+    // Strøbokser
+    for(let i=0; i<45; i++) {
+        gameState.obstacles.push({ x: rng()*(WORLD.width-32), y: rng()*(WORLD.height-32), w: 32, h: 32, type: 'box' });
     }
     gameState.cheese = { x: WORLD.width/2, y: WORLD.height/2 };
 }
@@ -55,7 +60,12 @@ function update() {
     const me = gameState.players[gameState.myId];
     if (!me) return;
 
-    if (me.frozen > 0) { me.frozen -= 1/60; me.vx = 0; me.vy = 0; syncPosition(me); return; }
+    if (me.frozen > 0) {
+        me.frozen -= 1/60;
+        me.vx = 0; me.vy = 0;
+        syncPosition(me);
+        return;
+    }
 
     const settings = me.role === 'cat' ? catSettings : mouseSettings;
     let oldX = me.x, oldY = me.y;
@@ -68,35 +78,32 @@ function update() {
     me.vx *= settings.friction; me.vy *= settings.friction;
     me.x += me.vx; me.y += me.vy;
 
-    // Kollisjon
-    me.x = Math.max(0, Math.min(me.x, WORLD.width));
-    me.y = Math.max(0, Math.min(me.y, WORLD.height));
-    gameState.obstacles.forEach(obs => {
-        if (me.x + 12 > obs.x && me.x - 12 < obs.x + obs.w && me.y + 12 > obs.y && me.y - 12 < obs.y + obs.h) {
+    // Kollisjon med hindre
+    gameState.obstacles.forEach(o => {
+        if (me.x + 15 > o.x && me.x - 15 < o.x + o.w && me.y + 15 > o.y && me.y - 15 < o.y + o.h) {
             me.x = oldX; me.y = oldY;
         }
     });
 
-    // Kamera
+    // Retning og animasjon (Fikset: stopper på frame 0)
+    if (Math.abs(me.vx) > 0.2) me.facing = me.vx > 0 ? 1 : -1;
+    if (Math.abs(me.vx) > 0.2 || Math.abs(me.vy) > 0.2) {
+        me.animTimer = (me.animTimer || 0) + 1;
+        me.frameX = Math.floor(me.animTimer / 7) % 4; 
+    } else {
+        me.frameX = 0; // Aldri usynlig når man står stille
+    }
+
     camera.x = me.x - (window.innerWidth / camera.zoom) / 2;
     camera.y = me.y - (window.innerHeight / camera.zoom) / 2;
 
-    // Animasjon og retning
-    if (Math.abs(me.vx) > 0.1) me.facing = Math.sign(me.vx);
-    if (Math.abs(me.vx) > 0.1 || Math.abs(me.vy) > 0.1) {
-        me.gameFrame = (me.gameFrame || 0) + 1;
-        me.frameX = Math.floor(me.gameFrame / 7) % 4;
-    }
-
-    // Jakt
-    if (me.role === 'cat') {
+    if (isHost && me.role === 'cat') {
         Object.values(gameState.players).forEach(p => {
             if (p.role === 'mouse' && p.frozen <= 0 && Math.hypot(me.x - p.x, me.y - p.y) < 45) {
-                sendTagEvent(p.id);
+                sendTagEvent(p.id, me.id);
             }
         });
     }
-
     syncPosition(me);
 }
 
@@ -107,35 +114,28 @@ function draw() {
     ctx.scale(camera.zoom, camera.zoom);
     ctx.translate(-camera.x, -camera.y);
 
-    gameState.obstacles.forEach(obs => {
-        ctx.drawImage(obs.type === 'wall' ? sprites.wall : sprites.box, obs.x, obs.y, 32, 32);
-    });
-
-    gameState.traps.forEach(t => ctx.drawImage(sprites.trap, t.x - 16, t.y - 16, 32, 32));
-    ctx.drawImage(sprites.cheese, gameState.cheese.x - 12, gameState.cheese.y - 12, 24, 24);
+    gameState.obstacles.forEach(o => ctx.drawImage(o.type==='wall'?sprites.wall:sprites.box, o.x, o.y, 32, 32));
+    ctx.drawImage(sprites.cheese, gameState.cheese.x-15, gameState.cheese.y-15, 30, 30);
 
     Object.values(gameState.players).forEach(p => {
         ctx.save();
         ctx.translate(p.x, p.y);
-        // Fikset retning: Katten og musen ser der de går
         if (p.facing === -1) ctx.scale(-1, 1);
         
+        const s = p.role === 'cat' ? 64 : 40;
         if (p.role === 'cat') {
-            ctx.drawImage(sprites.cat, (p.frameX || 0) * 48, 0, 48, 48, -24, -24, 48, 48);
+            ctx.drawImage(sprites.cat, (p.frameX || 0) * 48, 0, 48, 48, -s/2, -s/2, s, s);
         } else {
-            ctx.drawImage(sprites.mouse, -16, -16, 32, 32);
+            ctx.drawImage(sprites.mouse, -s/2, -s/2, s, s);
         }
         ctx.restore();
-
-        // Navn over spiller (tegnes utenfor skaleringen så den ikke speilvendes)
-        ctx.fillStyle = p.frozen > 0 ? "cyan" : "white";
-        ctx.font = "bold 10px Arial"; ctx.textAlign = "center";
-        ctx.fillText(p.frozen > 0 ? `❄️ ${Math.ceil(p.frozen)}` : p.name, p.x, p.y - 30);
+        
+        ctx.fillStyle = "white"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center";
+        ctx.fillText(p.frozen > 0 ? "❄️ FRYST" : p.name, p.x, p.y - 40);
     });
 
     ctx.restore();
     requestAnimationFrame(draw);
 }
-
-setInterval(update, 1000/60);
 draw();
+setInterval(update, 1000/60);
