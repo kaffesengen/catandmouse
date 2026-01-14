@@ -3,13 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MUSEJAKT: Katt mot Mus</title>
-    
+    <title>MUSEJAKT</title>
     <link href="https://fonts.googleapis.com/css2?family=Titan+One&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
@@ -19,32 +16,24 @@
         <h1 class="game-title">MUSEJAKT</h1>
         <div class="menu-box">
             <button onclick="showScreen('host-screen')" class="primary-btn">OPPRETT SPILL</button>
-            <button onclick="showScreen('join-screen')">BLI MED</button>
+            <button onclick="showScreen('join-screen')" class="join-btn">BLI MED</button>
         </div>
     </div>
 
     <div id="host-screen" class="screen hidden">
-        <h2>OPPRETT SERVER</h2>
-        <input type="text" id="host-name" placeholder="Ditt navn (f.eks. Pappa)">
-        <input type="text" id="server-name" placeholder="Navn på banen">
-        <input type="text" id="seed" placeholder="Bane-seed (f.eks. qf34f3)">
+        <h2>VERT-INNSTILLINGER</h2>
+        <input type="text" id="host-name" placeholder="Ditt navn">
         <input type="number" id="goal-score" value="10" placeholder="Poengmål">
-        
-        <div class="code-display">
-            DIN KODE: <span id="my-code">----</span>
-        </div>
-
-        <button onclick="initHost()" class="primary-btn">START LOBBY</button>
-        <button onclick="startGame()" id="start-btn" class="hidden win-btn">START GAME</button>
-        <button onclick="location.reload()" style="background: #999; box-shadow: 0 6px 0 #666;">TILBAKE</button>
+        <div class="code-display">KODE: <span id="my-code">----</span></div>
+        <button onclick="initHost()" class="primary-btn">ÅPNE LOBBY</button>
+        <button onclick="startGame()" id="start-btn" class="hidden win-btn">START SPILLET!</button>
     </div>
 
     <div id="join-screen" class="screen hidden">
-        <h2>BLI MED I SPILL</h2>
+        <h2>BLI MED</h2>
         <input type="text" id="player-name" placeholder="Ditt navn">
         <input type="text" id="join-code" placeholder="4-sifret kode">
-        <button onclick="joinGame()" class="primary-btn">KOBLE TIL</button>
-        <button onclick="location.reload()" style="background: #999; box-shadow: 0 6px 0 #666;">TILBAKE</button>
+        <button onclick="joinGame()" class="join-btn">KOBLE TIL</button>
     </div>
 
     <div id="game-ui" class="hidden">
@@ -54,8 +43,19 @@
         </div>
         
         <div class="hud-bottom">
-            <div id="leaderboard" class="sleek-panel">
+            <div id="leaderboard" class="sleek-panel"></div>
+        </div>
+
+        <div class="mobile-controls">
+            <div class="d-pad">
+                <button class="ctrl-btn up" id="btn-up">▲</button>
+                <div class="d-pad-mid">
+                    <button class="ctrl-btn left" id="btn-left">◀</button>
+                    <button class="ctrl-btn right" id="btn-right">▶</button>
                 </div>
+                <button class="ctrl-btn down" id="btn-down">▼</button>
+            </div>
+            <button class="trap-btn" id="btn-trap">FELLER</button>
         </div>
 
         <canvas id="gameCanvas"></canvas>
@@ -63,17 +63,5 @@
 
     <script src="network.js"></script>
     <script src="game.js"></script>
-
-    <script>
-        // Registrer Service Worker for PWA-støtte (Offline-støtte)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Service Worker registrert!'))
-                    .catch(err => console.log('SW feilet:', err));
-            });
-        }
-    </script>
-
 </body>
 </html>
