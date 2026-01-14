@@ -33,8 +33,8 @@ function joinGame() {
 }
 
 function handleData(data, sender) {
-    if (data.type === 'LOBBY_JOIN' && isHost) {
-        gameState.players[sender.peer] = { id: sender.peer, name: data.name, x: 1500, y: 1250, score: 0, role: 'mouse', frozen: 0 };
+    if (isHost && data.type === 'LOBBY_JOIN') {
+        gameState.players[sender.peer] = { id: sender.peer, name: data.name, x: 1200, y: 1000, score: 0, role: 'mouse', frozen: 0, facing: 1 };
         updateLobbyUI();
         connections.forEach(c => c.send({ type: 'LOBBY_UPDATE', players: gameState.players }));
     }
@@ -49,56 +49,103 @@ function handleData(data, sender) {
         showScreen('game-ui');
     }
     if (data.type === 'POS_UPDATE' && data.id !== gameState.myId) {
-        if(gameState.players[data.id]) Object.assign(gameState.players[data.id], data);
+        if (gameState.players[data.id]) Object.assign(gameState.players[data.id], data);
     }
-    if (data.type === 'TAG_EVENT' && data.targetId === gameState.myId) {
-        if(sounds.tag) sounds.tag.play();
-        gameState.players[gameState.myId].frozen = 5;
-        gameState.players[gameState.myId].x = Math.random() * WORLD.width;
-        gameState.players[gameState.myId].y = Math.random() * WORLD.height;
+    if (data.type === 'TAG_EVENT') {
+        if (sounds.tag) sounds.tag.play();
+        if (data.targetId === gameState.myId) {
+            gameState.players[gameState.myId].frozen = 5;
+            gameState.players[gameState.myId].x = 100 + Math.random() * (WORLD.width - 200);
+            gameState.players[gameState.myId].y = 100 + Math.random() * (WORLD.height - 200);
+        }
+    }
+    if (data.type === 'SCORE_UPDATE') {
+        if (data.cheese) {
+            gameState.cheese = data.cheese;
+            if (sounds.cheese) sounds.cheese.play();
+        }
+        if (gameState.players[data.id]) gameState.players[data.id].score = data.score;
+        checkWinCondition();
+    }
+    if (isHost && data.type === 'SCORE_REQUEST') {
+        gameState.players[data.id].score++;
+        gameState.cheese = { x: 200 + Math.random()*(WORLD.width-400), y: 200 + Math.random()*(WORLD.height-400) };
+        broadcast({ type: 'SCORE_UPDATE', id: data.id, score: gameState.players[data.id].score, cheese: gameState.cheese });
+    }
+    if (data.type === 'TRAP_PLACE') {
+        gameState.traps.push(data.trap);
+        if (sounds.trap) sounds.trap.play();
     }
 }
 
 function updateLobbyUI() {
-    const listHtml = Object.values(gameState.players).map(p => `<div class="player-tag">${p.name}</div>`).join('');
-    const el = isHost ? 'host-player-list' : 'join-player-list';
-    const container = document.getElementById(el);
-    if(container) container.innerHTML = listHtml;
-    
-    if(isHost && Object.keys(gameState.players).length > 1) {
-        document.getElementById('start-btn').classList.remove('hidden');
-    }
+    const list = Object.values(gameState.players).map(p => `<div class="player-tag">${p.name}</div>`).join('');
+    const container = isHost ? document.getElementById('host-player-list') : document.getElementById('join-player-list');
+    if (container) container.innerHTML = list;
+    if (isHost && Object.keys(gameState.players).length > 1) document.getElementById('start-btn').classList.remove('hidden');
 }
 
 function startGame() {
     const ids = Object.keys(gameState.players);
     const catId = ids[Math.floor(Math.random() * ids.length)];
+    const seed = document.getElementById('host-seed').value || Math.random().toString();
     ids.forEach(id => {
         gameState.players[id].role = (id === catId ? 'cat' : 'mouse');
         gameState.players[id].score = 0;
     });
-    const msg = { type: 'START_CONTROL', seed: Math.random(), players: gameState.players };
+    const msg = { type: 'START_CONTROL', seed, players: gameState.players };
     connections.forEach(c => c.send(msg));
     handleData(msg);
 }
 
 function syncPosition(me) {
     const data = { type: 'POS_UPDATE', id: me.id, x: me.x, y: me.y, vx: me.vx, vy: me.vy, role: me.role, frozen: me.frozen, facing: me.facing, frameX: me.frameX };
-    if(isHost) connections.forEach(c => c.send(data)); else if(hostConn) hostConn.send(data);
+    broadcast(data);
 }
 
-function sendTagEvent(targetId, catId) {
-    connections.forEach(c => c.send({ type: 'TAG_EVENT', targetId }));
+function processTag(targetId, catId) {
+    broadcast({ type: 'TAG_EVENT', targetId });
     gameState.players[catId].score++;
+    broadcast({ type: 'SCORE_UPDATE', id: catId, score: gameState.players[catId].score });
+}
+
+function requestScore(id) {
+    if (isHost) {
+        gameState.players[id].score++;
+        gameState.cheese = { x: 200 + Math.random()*(WORLD.width-400), y: 200 + Math.random()*(WORLD.height-400) };
+        broadcast({ type: 'SCORE_UPDATE', id, score: gameState.players[id].score, cheese: gameState.cheese });
+    } else {
+        hostConn.send({ type: 'SCORE_REQUEST', id });
+    }
+}
+
+function broadcastTrap(trap) {
+    broadcast({ type: 'TRAP_PLACE', trap });
+    gameState.traps.push(trap);
+}
+
+function broadcast(data) {
+    if (isHost) connections.forEach(c => c.send(data));
+    else if (hostConn) hostConn.send(data);
 }
 
 function setupLocalPlayer(id, name) {
     gameState.myId = id;
-    gameState.players[id] = { id, name, x: 1500, y: 1250, vx: 0, vy: 0, score: 0, role: 'mouse', frozen: 0, facing: 1 };
+    gameState.players[id] = { id, name, x: 1200, y: 1000, vx: 0, vy: 0, score: 0, role: 'mouse', frozen: 0, facing: 1 };
     updateLobbyUI();
 }
 
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     document.getElementById(id).classList.remove('hidden');
+}
+
+function checkWinCondition() {
+    const win = Object.values(gameState.players).find(p => p.score >= gameState.scoreGoal);
+    if (win && gameState.isStarted) {
+        gameState.isStarted = false;
+        confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
+        alert("VINNER: " + win.name);
+        location.reload();
+    }
 }
