@@ -1,5 +1,5 @@
-const CACHE_NAME = 'musejakt-v1';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'musejakt-v2';
+const ASSETS = [
     './',
     './index.html',
     './style.css',
@@ -9,19 +9,15 @@ const ASSETS_TO_CACHE = [
     './assets/cat.png',
     './assets/mouse.png',
     './assets/cheese.png',
-    './assets/trap.png',
     './assets/wall.png',
-    './assets/box.png'
+    './assets/box.png',
+    './assets/trap.png'
 ];
 
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
-    );
+    event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
 });
 
 self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request).then((response) => response || fetch(event.request))
-    );
+    event.respondWith(caches.match(event.request).then((res) => res || fetch(event.request)));
 });
