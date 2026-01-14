@@ -3,45 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Musejakt</title>
+    <title>MUSEJAKT: Katt mot Mus</title>
+    
     <link href="https://fonts.googleapis.com/css2?family=Titan+One&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
 
     <div id="menu" class="screen">
-        <h1>MUSEJAKT</h1>
-        <button onclick="showScreen('host-screen')">Host Game</button>
-        <button onclick="showScreen('join-screen')">Join Game</button>
+        <h1 class="game-title">MUSEJAKT</h1>
+        <div class="menu-box">
+            <button onclick="showScreen('host-screen')" class="primary-btn">OPPRETT SPILL</button>
+            <button onclick="showScreen('join-screen')">BLI MED</button>
+        </div>
     </div>
 
     <div id="host-screen" class="screen hidden">
-        <h2>Opprett Server</h2>
-        <input type="text" id="host-name" placeholder="Ditt navn">
-        <input type="text" id="server-name" placeholder="Servernavn">
-        <input type="text" id="seed" placeholder="Bane-seed (f.eks 123)">
+        <h2>OPPRETT SERVER</h2>
+        <input type="text" id="host-name" placeholder="Ditt navn (f.eks. Pappa)">
+        <input type="text" id="server-name" placeholder="Navn på banen">
+        <input type="text" id="seed" placeholder="Bane-seed (f.eks. qf34f3)">
         <input type="number" id="goal-score" value="10" placeholder="Poengmål">
-        <div id="room-code-display">Din kode: <span id="my-code">...</span></div>
-        <button onclick="initHost()">Start Lobby</button>
-        <button onclick="startGame()" id="start-btn" class="hidden">START GAME</button>
+        
+        <div class="code-display">
+            DIN KODE: <span id="my-code">----</span>
+        </div>
+
+        <button onclick="initHost()" class="primary-btn">START LOBBY</button>
+        <button onclick="startGame()" id="start-btn" class="hidden win-btn">START GAME</button>
+        <button onclick="location.reload()" style="background: #999; box-shadow: 0 6px 0 #666;">TILBAKE</button>
     </div>
 
     <div id="join-screen" class="screen hidden">
-        <h2>Bli med</h2>
+        <h2>BLI MED I SPILL</h2>
         <input type="text" id="player-name" placeholder="Ditt navn">
         <input type="text" id="join-code" placeholder="4-sifret kode">
-        <button onclick="joinGame()">Koble til</button>
+        <button onclick="joinGame()" class="primary-btn">KOBLE TIL</button>
+        <button onclick="location.reload()" style="background: #999; box-shadow: 0 6px 0 #666;">TILBAKE</button>
     </div>
 
     <div id="game-ui" class="hidden">
-        <div id="leaderboard"></div>
-        <div id="timer">Neste katt: 02:00</div>
+        <div class="hud-top">
+            <div id="timer" class="game-badge">02:00</div>
+            <button id="quit-btn" onclick="location.reload()" class="win-btn">AVSLUTT</button>
+        </div>
+        
+        <div class="hud-bottom">
+            <div id="leaderboard" class="sleek-panel">
+                </div>
+        </div>
+
         <canvas id="gameCanvas"></canvas>
     </div>
 
     <script src="network.js"></script>
     <script src="game.js"></script>
+
+    <script>
+        // Registrer Service Worker for PWA-støtte (Offline-støtte)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registrert!'))
+                    .catch(err => console.log('SW feilet:', err));
+            });
+        }
+    </script>
+
 </body>
 </html>
