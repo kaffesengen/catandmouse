@@ -1,213 +1,64 @@
-/* --- 1. BASE OG FARGER --- */
 :root {
-    --kahoot-purple: #46178f;
-    --kahoot-blue: #1368ce;
-    --kahoot-blue-dark: #0f54a8;
-    --kahoot-green: #26890c;
-    --kahoot-green-dark: #1e6f09;
-    --kahoot-red: #e21b3c;
-    --kahoot-red-dark: #bf1632;
-    --kahoot-yellow: #ffc700;
-    --kahoot-white: #ffffff;
+    --purple: #46178f;
+    --blue: #1368ce;
+    --green: #26890c;
+    --red: #e21b3c;
+    --yellow: #ffc700;
 }
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    /* Ny, leken font! */
-    font-family: 'Titan One', cursive, sans-serif;
-    user-select: none;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Titan One', cursive, sans-serif; user-select: none; }
 
 body {
-    background-color: var(--kahoot-purple);
-    /* Legg til et lekent mønster i bakgrunnen */
-    background-image: radial-gradient(circle at 10% 20%, rgba(255,255,255,0.1) 20%, transparent 20%),
-                      radial-gradient(circle at 90% 80%, rgba(255,255,255,0.1) 20%, transparent 20%);
-    background-size: 300px 300px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    overflow: hidden;
+    background-color: var(--purple);
+    background-image: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.05) 10%, transparent 10%),
+                      radial-gradient(circle at 80% 70%, rgba(255,255,255,0.05) 15%, transparent 15%);
+    background-size: 400px 400px;
+    display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden;
 }
 
-/* --- 2. SKJERM-BOKSER --- */
 .screen {
-    background: var(--kahoot-white);
-    width: 90%;
-    max-width: 450px;
-    padding: 35px;
-    /* Mer avrundede hjørner og en tykk kant */
-    border-radius: 25px;
-    border: 5px solid var(--kahoot-blue);
-    box-shadow: 0 10px 0 #333, 0 15px 20px rgba(0,0,0,0.2);
-    text-align: center;
-    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Spretten animasjon */
-    position: relative;
+    background: white; width: 90%; max-width: 450px; padding: 35px; border-radius: 25px;
+    border: 6px solid var(--blue); box-shadow: 0 10px 0 #222; text-align: center;
+    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.hidden {
-    display: none !important;
-}
+.hidden { display: none !important; }
 
-/* --- 3. TYPOGRAFI --- */
-.game-title {
-    font-size: 3.5rem;
-    color: var(--kahoot-purple);
-    margin-bottom: 25px;
-    /* Hvit kant rundt teksten for en tegneserie-effekt */
-    -webkit-text-stroke: 2px white;
-    text-shadow: 4px 4px 0 #000;
-    letter-spacing: 2px;
-}
+.game-title { font-size: 3.5rem; color: var(--purple); margin-bottom: 25px; -webkit-text-stroke: 1px #000; text-shadow: 4px 4px 0 #ddd; }
 
-h2 {
-    font-size: 2rem;
-    color: var(--kahoot-blue);
-    margin-bottom: 20px;
-    text-shadow: 2px 2px 0 #ddd;
-}
-
-/* --- 4. INPUT-FELTER --- */
 input {
-    width: 100%;
-    padding: 15px 20px;
-    margin: 12px 0;
-    border: 3px solid #ddd;
-    border-radius: 15px;
-    font-size: 1.2rem;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Lettere å lese for input */
-    outline: none;
-    background: #f9f9f9;
-    transition: all 0.2s;
-    box-shadow: inset 0 3px 5px rgba(0,0,0,0.05);
+    width: 100%; padding: 15px; margin: 10px 0; border: 3px solid #ddd; border-radius: 15px;
+    font-size: 1.2rem; outline: none; transition: 0.2s;
 }
 
-input:focus {
-    border-color: var(--kahoot-blue);
-    background: #fff;
-    transform: scale(1.02);
-}
-
-/* --- 5. LEKNE 3D-KNAPPER --- */
 button {
-    width: 100%;
-    padding: 15px;
-    margin: 12px 0;
-    border: none;
-    border-radius: 15px;
-    font-size: 1.4rem;
-    cursor: pointer;
-    color: white;
-    position: relative;
-    /* 3D-effekt med skygge i bunnen */
-    box-shadow: 0 6px 0 var(--kahoot-blue-dark), 0 10px 15px rgba(0,0,0,0.2);
-    background-color: var(--kahoot-blue);
-    transition: all 0.1s;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    width: 100%; padding: 18px; margin: 12px 0; border: none; border-radius: 15px;
+    font-size: 1.4rem; cursor: pointer; color: white; position: relative;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.3); transition: all 0.1s; text-transform: uppercase;
 }
 
-button:active {
-    /* Trykk knappen ned */
-    transform: translateY(6px);
-    box-shadow: 0 0 0 var(--kahoot-blue-dark), 0 5px 10px rgba(0,0,0,0.2);
-}
+button:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
 
-/* Varianter av knapper */
-.primary-btn {
-    background-color: var(--kahoot-green);
-    box-shadow: 0 6px 0 var(--kahoot-green-dark), 0 10px 15px rgba(0,0,0,0.2);
-}
-.primary-btn:active {
-    box-shadow: 0 0 0 var(--kahoot-green-dark), 0 5px 10px rgba(0,0,0,0.2);
-}
+.primary-btn { background: var(--green); }
+.win-btn { background: var(--red); }
 
-.win-btn {
-    background-color: var(--kahoot-red);
-    box-shadow: 0 6px 0 var(--kahoot-red-dark), 0 10px 15px rgba(0,0,0,0.2);
-    font-size: 1.6rem;
-    animation: pulse 1.5s infinite;
-}
-.win-btn:active {
-    box-shadow: 0 0 0 var(--kahoot-red-dark), 0 5px 10px rgba(0,0,0,0.2);
-}
+/* IN-GAME UI */
+#game-ui { position: relative; width: 100vw; height: 100vh; background: #222; }
 
-/* --- 6. KODE-VISNING --- */
-.code-display {
-    background: #333;
-    color: #fff;
-    padding: 20px;
-    margin: 25px 0;
-    border-radius: 15px;
-    font-size: 1.4rem;
-    border: 3px solid #555;
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
-}
+.hud-top { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; z-index: 10; pointer-events: none; }
+.game-badge { background: var(--red); padding: 10px 25px; border-radius: 20px; border: 4px solid #fff; color: white; font-size: 1.5rem; box-shadow: 0 5px 0 #900; }
+#quit-btn { width: auto; pointer-events: auto; padding: 10px 20px; font-size: 1rem; background: #555; }
 
-#my-code {
-    color: var(--kahoot-yellow);
-    letter-spacing: 8px;
-    font-size: 2rem;
-    display: block;
-    margin-top: 10px;
-    text-shadow: 0 0 10px var(--kahoot-yellow);
-}
+.hud-bottom { position: absolute; bottom: 20px; left: 20px; z-index: 10; pointer-events: none; }
+.sleek-panel { background: rgba(255, 255, 255, 0.9); border: 4px solid var(--blue); border-radius: 15px; padding: 15px; box-shadow: 0 5px 0 var(--blue-dark); min-width: 200px; }
 
-/* --- 7. SPILL-UI & PALLEN --- */
-#game-ui {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: #222;
-}
+canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 
-canvas {
-    border: 5px solid #fff;
-    border-radius: 10px;
-    box-shadow: 0 0 30px rgba(0,0,0,0.5);
-}
+/* PODIUM */
+.podium-container { display: flex; align-items: flex-end; justify-content: center; gap: 15px; height: 200px; margin-top: 30px; }
+.podium-step { width: 80px; display: flex; flex-direction: column; justify-content: flex-end; border-radius: 10px 10px 0 0; font-size: 0.9rem; padding-bottom: 5px; border: 2px solid #000; }
+.podium-1 { height: 100%; background: var(--yellow); }
+.podium-2 { height: 70%; background: #c0c0c0; }
+.podium-3 { height: 45%; background: #cd7f32; }
 
-.podium-container {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 15px;
-    height: 250px;
-    margin-top: 40px;
-}
-
-.podium-step {
-    width: 90px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    color: #000;
-    font-size: 1.2rem;
-    border-radius: 15px 15px 0 0;
-    border: 4px solid rgba(0,0,0,0.2);
-    border-bottom: none;
-    text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
-    padding-bottom: 10px;
-}
-
-.podium-1 { height: 100%; background: linear-gradient(to top, #e6c300, #ffd700); box-shadow: 0 0 20px #ffd700; z-index: 2; font-size: 1.5rem;}
-.podium-2 { height: 70%; background: linear-gradient(to top, #a8a8a8, #c0c0c0); box-shadow: 0 0 15px #c0c0c0;}
-.podium-3 { height: 50%; background: linear-gradient(to top, #b06d3b, #cd7f32); box-shadow: 0 0 15px #cd7f32;}
-
-/* --- ANIMAJONER --- */
-@keyframes popIn {
-    0% { opacity: 0; transform: scale(0.5) translateY(50px); }
-    100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
+@keyframes popIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
