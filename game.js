@@ -1,67 +1,77 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const WORLD = { width: 2500, height: 2000 };
-let camera = { x: 0, y: 0, zoom: 1.6 };
+let camera = { x: 0, y: 0, zoom: 1.5 };
 
 const DIM = { cat: 64, mouse: 40, cheese: 32, wall: 32 };
 const mouseSettings = { acc: 1.1, topSpeed: 7, friction: 0.88 };
 const catSettings = { acc: 0.35, topSpeed: 10, friction: 0.95 };
 
-const sprites = { cat: new Image(), mouse: new Image(), cheese: new Image(), trap: new Image(), wall: new Image(), box: new Image() };
+const sprites = { 
+    cat: new Image(), mouse: new Image(), cheese: new Image(), 
+    trap: new Image(), wall: new Image(), box: new Image() 
+};
 sprites.cat.src = 'assets/cat.png'; sprites.mouse.src = 'assets/mouse.png'; sprites.cheese.src = 'assets/cheese.png';
 sprites.trap.src = 'assets/trap.png'; sprites.wall.src = 'assets/wall.png'; sprites.box.src = 'assets/box.png';
-
-const sounds = { tag: document.getElementById('snd-tag'), cheese: document.getElementById('snd-cheese'), trap: document.getElementById('snd-trap') };
 
 let gameState = { isStarted: false, myId: null, players: {}, obstacles: [], cheese: {x:0,y:0}, traps: [], roleTimer: 120, scoreGoal: 10 };
 const keys = {};
 const mobileKeys = { up: false, down: false, left: false, right: false };
 
-// Mobil-knapper
+// Responsiv kontroll-fiks
 const setupBtn = (id, key) => {
     const btn = document.getElementById(id);
     if (!btn) return;
-    btn.ontouchstart = (e) => { e.preventDefault(); mobileKeys[key] = true; };
-    btn.ontouchend = (e) => { e.preventDefault(); mobileKeys[key] = false; };
+    const start = (e) => { e.preventDefault(); mobileKeys[key] = true; };
+    const end = (e) => { e.preventDefault(); mobileKeys[key] = false; };
+    btn.addEventListener('touchstart', start); btn.addEventListener('touchend', end);
+    btn.addEventListener('mousedown', start); btn.addEventListener('mouseup', end);
 };
 setupBtn('btn-up', 'up'); setupBtn('btn-down', 'down'); setupBtn('btn-left', 'left'); setupBtn('btn-right', 'right');
-document.getElementById('btn-trap').onclick = () => { placeTrap(); };
+document.getElementById('btn-trap').addEventListener('click', () => placeTrap());
 
 window.onkeydown = e => {
     keys[e.key.toLowerCase()] = true;
-    if (e.code === 'KeyE' || e.code === 'Enter') placeTrap();
+    if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') placeTrap();
 };
 window.onkeyup = e => keys[e.key.toLowerCase()] = false;
 
 function initArena(seedStr) {
     gameState.obstacles = [];
-    let seed = 0;
+    let seed = 123;
     if (seedStr) {
         for (let i = 0; i < seedStr.length; i++) seed += seedStr.charCodeAt(i);
-    } else {
-        seed = Math.random() * 10000;
     }
-    
     let s = seed;
     const rng = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
 
-    // Vegger i linjer
-    for(let i=0; i<30; i++) {
+    // Yttervegger
+    for(let x=0; x<WORLD.width; x+=32) {
+        gameState.obstacles.push({x, y:0, w:32, h:32, type:'wall'});
+        gameState.obstacles.push({x, y:WORLD.height-32, w:32, h:32, type:'wall'});
+    }
+    for(let y=0; y<WORLD.height; y+=32) {
+        gameState.obstacles.push({x:0, y, w:32, h:32, type:'wall'});
+        gameState.obstacles.push({x:WORLD.width-32, y, w:32, h:32, type:'wall'});
+    }
+
+    // Innvendige vegger i linjer
+    for(let i=0; i<25; i++) {
         let x = Math.floor(rng() * (WORLD.width / 32)) * 32;
         let y = Math.floor(rng() * (WORLD.height / 32)) * 32;
         let isH = rng() > 0.5;
-        let len = 4 + Math.floor(rng() * 8);
+        let len = 4 + Math.floor(rng() * 6);
         for(let j=0; j<len; j++) {
             let wx = isH ? x + (j * 32) : x;
             let wy = isH ? y : y + (j * 32);
-            if(wx < WORLD.width - 32 && wy < WORLD.height - 32) {
+            if(wx > 32 && wx < WORLD.width-64 && wy > 32 && wy < WORLD.height-64) {
                 gameState.obstacles.push({ x: wx, y: wy, w: 32, h: 32, type: 'wall' });
             }
         }
     }
-    // Strø-bokser
-    for(let i=0; i<50; i++) {
-        gameState.obstacles.push({ x: rng()*(WORLD.width-32), y: rng()*(WORLD.height-32), w: 32, h: 32, type: 'box' });
+    // Strøbokser
+    for(let i=0; i<40; i++) {
+        gameState.obstacles.push({ x: 100+rng()*(WORLD.width-200), y: 100+rng()*(WORLD.height-200), w: 32, h: 32, type: 'box' });
     }
     gameState.cheese = { x: WORLD.width/2, y: WORLD.height/2 };
 }
@@ -87,36 +97,32 @@ function update() {
     me.vx *= set.friction; me.vy *= set.friction;
     me.x += me.vx; me.y += me.vy;
 
-    // YTTERKANTER OG HINDRE
+    // Kollisjon
     const radius = 15;
-    if (me.x < radius || me.x > WORLD.width - radius) me.x = oldX;
-    if (me.y < radius || me.y > WORLD.height - radius) me.y = oldY;
-
     gameState.obstacles.forEach(o => {
         if (me.x + radius > o.x && me.x - radius < o.x + o.w && me.y + radius > o.y && me.y - radius < o.y + o.h) {
             me.x = oldX; me.y = oldY;
         }
     });
 
-    // Retning og Animasjon (Stopp på frame 0)
+    // Retning og Animasjon
     if (Math.abs(me.vx) > 0.2) me.facing = me.vx > 0 ? 1 : -1;
     if (Math.abs(me.vx) > 0.2 || Math.abs(me.vy) > 0.2) {
         me.animT = (me.animT || 0) + 1;
         me.frameX = Math.floor(me.animT / 7) % 4;
-    } else {
-        me.frameX = 0;
-    }
+    } else { me.frameX = 0; }
 
     camera.x = me.x - (window.innerWidth / camera.zoom) / 2;
     camera.y = me.y - (window.innerHeight / camera.zoom) / 2;
 
-    // OST-SJEKK (Lokalt for musa)
-    if (me.role === 'mouse') {
-        let d = Math.hypot(me.x - gameState.cheese.x, me.y - gameState.cheese.y);
-        if (d < 35) requestScore(me.id);
+    // Grenser for kamera
+    camera.x = Math.max(0, Math.min(camera.x, WORLD.width - window.innerWidth / camera.zoom));
+    camera.y = Math.max(0, Math.min(camera.y, WORLD.height - window.innerHeight / camera.zoom));
+
+    if (me.role === 'mouse' && Math.hypot(me.x - gameState.cheese.x, me.y - gameState.cheese.y) < 35) {
+        requestScore(me.id);
     }
 
-    // TAG-SJEKK (Kun Host sjekker kollisjon)
     if (isHost && me.role === 'cat') {
         Object.values(gameState.players).forEach(p => {
             if (p.role === 'mouse' && p.frozen <= 0 && Math.hypot(me.x - p.x, me.y - p.y) < 50) {
@@ -124,24 +130,27 @@ function update() {
             }
         });
     }
-
     syncPosition(me);
 }
 
 function draw() {
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!gameState.isStarted) return;
+    
+    if (!gameState.isStarted) {
+        requestAnimationFrame(draw);
+        return;
+    }
 
     ctx.save();
     ctx.scale(camera.zoom, camera.zoom);
     ctx.translate(-camera.x, -camera.y);
 
-    // Bakgrunn / Bakken
-    ctx.fillStyle = "#444";
+    // Bakgrunn
+    ctx.fillStyle = "#555";
     ctx.fillRect(0, 0, WORLD.width, WORLD.height);
 
-    // Tegn objekter
+    // Objekter
     gameState.obstacles.forEach(o => ctx.drawImage(o.type==='wall'?sprites.wall:sprites.box, o.x, o.y, 32, 32));
     gameState.traps.forEach(t => ctx.drawImage(sprites.trap, t.x - 16, t.y - 16, 32, 32));
     ctx.drawImage(sprites.cheese, gameState.cheese.x-16, gameState.cheese.y-16, 32, 32);
@@ -172,7 +181,7 @@ function updateLeaderboardUI() {
     const el = document.getElementById('leaderboard');
     if (!el) return;
     const sorted = Object.values(gameState.players).sort((a,b) => b.score - a.score);
-    el.innerHTML = sorted.map(p => `<div style="color:${p.role==='cat'?'#e21b3c':'#1368ce'}">${p.name}: ${p.score}</div>`).join('');
+    el.innerHTML = sorted.map(p => `<div>${p.name}: ${p.score}</div>`).join('');
 }
 
 function placeTrap() {
