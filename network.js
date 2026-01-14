@@ -7,92 +7,98 @@ function initHost() {
     peer = new Peer(ROOM_PREFIX + code);
     peer.on('open', id => {
         document.getElementById('my-code').innerText = code;
-        document.getElementById('start-btn').classList.remove('hidden');
+        document.getElementById('open-lobby-btn').classList.add('hidden');
         setupLocalPlayer(id, document.getElementById('host-name').value || "Vert");
     });
     peer.on('connection', conn => {
         connections.push(conn);
-        conn.on('data', data => handleIncomingData(data, conn));
+        conn.on('data', data => handleData(data, conn));
     });
 }
 
 function joinGame() {
-    isHost = false;
     const code = document.getElementById('join-code').value;
-    const name = document.getElementById('player-name').value || "Spiller";
+    const name = document.getElementById('player-name').value || "Gjest";
     peer = new Peer();
     peer.on('open', id => {
         setupLocalPlayer(id, name);
         hostConn = peer.connect(ROOM_PREFIX + code);
         hostConn.on('open', () => {
-            hostConn.send({ type: 'JOIN', name });
-            showScreen('game-ui');
+            hostConn.send({ type: 'LOBBY_JOIN', name });
+            document.getElementById('join-lobby-info').classList.remove('hidden');
+            document.getElementById('join-conn-btn').classList.add('hidden');
         });
-        hostConn.on('data', data => handleIncomingData(data, hostConn));
+        hostConn.on('data', data => handleData(data, hostConn));
     });
 }
 
-function handleIncomingData(data, sender) {
-    switch(data.type) {
-        case 'JOIN':
-            gameState.players[sender.peer] = { id: sender.peer, name: data.name, x: 500, y: 500, score: 0, role: 'mouse', frozen: 0 };
-            break;
-        case 'START_CONTROL':
-            gameState.players = data.players; gameState.isStarted = true;
-            initArena(data.seed); showScreen('game-ui');
-            break;
-        case 'POS_UPDATE':
-            if(gameState.players[data.id]) Object.assign(gameState.players[data.id], data);
-            break;
-        case 'TAG_EVENT':
-            if(data.targetId === gameState.myId) {
-                const me = gameState.players[gameState.myId];
-                me.frozen = 5; // Fryser i 5 sekunder
-                setTimeout(() => { // Spawner på nytt
-                    me.x = Math.random() * WORLD.width;
-                    me.y = Math.random() * WORLD.height;
-                }, 5000);
-            }
-            break;
+function handleData(data, sender) {
+    if (data.type === 'LOBBY_JOIN' && isHost) {
+        gameState.players[sender.peer] = { id: sender.peer, name: data.name, x: 1500, y: 1250, score: 0, role: 'mouse', frozen: 0 };
+        updateLobbyUI();
+        connections.forEach(c => c.send({ type: 'LOBBY_UPDATE', players: gameState.players }));
+    }
+    if (data.type === 'LOBBY_UPDATE') {
+        gameState.players = data.players;
+        updateLobbyUI();
+    }
+    if (data.type === 'START_CONTROL') {
+        gameState.players = data.players;
+        gameState.isStarted = true;
+        initArena(data.seed);
+        showScreen('game-ui');
+    }
+    if (data.type === 'POS_UPDATE' && data.id !== gameState.myId) {
+        if(gameState.players[data.id]) Object.assign(gameState.players[data.id], data);
+    }
+    if (data.type === 'TAG_EVENT' && data.targetId === gameState.myId) {
+        if(sounds.tag) sounds.tag.play();
+        gameState.players[gameState.myId].frozen = 5;
+        gameState.players[gameState.myId].x = Math.random() * WORLD.width;
+        gameState.players[gameState.myId].y = Math.random() * WORLD.height;
     }
 }
 
-function syncPosition(me) {
-    const data = { type: 'POS_UPDATE', id: me.id, x: me.x, y: me.y, vx: me.vx, vy: me.vy, role: me.role, frozen: me.frozen, frameX: me.frameX, facing: me.facing };
-    if(isHost) connections.forEach(c => c.send(data)); else if(hostConn) hostConn.send(data);
-}
-
-function sendTagEvent(targetId) {
-    const msg = { type: 'TAG_EVENT', targetId };
-    if(isHost) connections.forEach(c => c.send(msg)); else hostConn.send(msg);
-    if(isHost) { gameState.players[gameState.myId].score++; }
+function updateLobbyUI() {
+    const listHtml = Object.values(gameState.players).map(p => `<div class="player-tag">${p.name}</div>`).join('');
+    const el = isHost ? 'host-player-list' : 'join-player-list';
+    const container = document.getElementById(el);
+    if(container) container.innerHTML = listHtml;
+    
+    if(isHost && Object.keys(gameState.players).length > 1) {
+        document.getElementById('start-btn').classList.remove('hidden');
+    }
 }
 
 function startGame() {
     const ids = Object.keys(gameState.players);
     const catId = ids[Math.floor(Math.random() * ids.length)];
-    ids.forEach(id => gameState.players[id].role = (id === catId ? 'cat' : 'mouse'));
+    ids.forEach(id => {
+        gameState.players[id].role = (id === catId ? 'cat' : 'mouse');
+        gameState.players[id].score = 0;
+    });
     const msg = { type: 'START_CONTROL', seed: Math.random(), players: gameState.players };
-    if(isHost) connections.forEach(c => c.send(msg));
-    handleIncomingData(msg);
+    connections.forEach(c => c.send(msg));
+    handleData(msg);
+}
+
+function syncPosition(me) {
+    const data = { type: 'POS_UPDATE', id: me.id, x: me.x, y: me.y, vx: me.vx, vy: me.vy, role: me.role, frozen: me.frozen, facing: me.facing, frameX: me.frameX };
+    if(isHost) connections.forEach(c => c.send(data)); else if(hostConn) hostConn.send(data);
+}
+
+function sendTagEvent(targetId, catId) {
+    connections.forEach(c => c.send({ type: 'TAG_EVENT', targetId }));
+    gameState.players[catId].score++;
 }
 
 function setupLocalPlayer(id, name) {
     gameState.myId = id;
-    gameState.players[id] = { id, name, x: 1000, y: 1000, vx: 0, vy: 0, score: 0, role: 'mouse', frozen: 0, facing: 1 };
+    gameState.players[id] = { id, name, x: 1500, y: 1250, vx: 0, vy: 0, score: 0, role: 'mouse', frozen: 0, facing: 1 };
+    updateLobbyUI();
 }
 
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     document.getElementById(id).classList.remove('hidden');
 }
-
-window.onkeydown = e => {
-    if(e.code === 'Space' && gameState.isStarted) {
-        const me = gameState.players[gameState.myId];
-        if(me && me.role === 'cat') {
-            const trap = { x: me.x, y: me.y };
-            gameState.traps.push(trap); // Legg til lokalt og send til alle
-        }
-    }
-};
