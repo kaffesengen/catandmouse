@@ -1,1 +1,46 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Musejakt</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
 
+    <div id="menu" class="screen">
+        <h1>MUSEJAKT</h1>
+        <button onclick="showScreen('host-screen')">Host Game</button>
+        <button onclick="showScreen('join-screen')">Join Game</button>
+    </div>
+
+    <div id="host-screen" class="screen hidden">
+        <h2>Opprett Server</h2>
+        <input type="text" id="host-name" placeholder="Ditt navn">
+        <input type="text" id="server-name" placeholder="Servernavn">
+        <input type="text" id="seed" placeholder="Bane-seed (f.eks 123)">
+        <input type="number" id="goal-score" value="10" placeholder="Poengmål">
+        <div id="room-code-display">Din kode: <span id="my-code">...</span></div>
+        <button onclick="initHost()">Start Lobby</button>
+        <button onclick="startGame()" id="start-btn" class="hidden">START GAME</button>
+    </div>
+
+    <div id="join-screen" class="screen hidden">
+        <h2>Bli med</h2>
+        <input type="text" id="player-name" placeholder="Ditt navn">
+        <input type="text" id="join-code" placeholder="4-sifret kode">
+        <button onclick="joinGame()">Koble til</button>
+    </div>
+
+    <div id="game-ui" class="hidden">
+        <div id="leaderboard"></div>
+        <div id="timer">Neste katt: 02:00</div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script src="network.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
