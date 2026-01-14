@@ -52,18 +52,14 @@ function handleData(data, sender) {
         if (gameState.players[data.id]) Object.assign(gameState.players[data.id], data);
     }
     if (data.type === 'TAG_EVENT') {
-        if (sounds.tag) sounds.tag.play();
         if (data.targetId === gameState.myId) {
             gameState.players[gameState.myId].frozen = 5;
-            gameState.players[gameState.myId].x = 100 + Math.random() * (WORLD.width - 200);
-            gameState.players[gameState.myId].y = 100 + Math.random() * (WORLD.height - 200);
+            gameState.players[gameState.myId].x = 200 + Math.random() * (WORLD.width - 400);
+            gameState.players[gameState.myId].y = 200 + Math.random() * (WORLD.height - 400);
         }
     }
     if (data.type === 'SCORE_UPDATE') {
-        if (data.cheese) {
-            gameState.cheese = data.cheese;
-            if (sounds.cheese) sounds.cheese.play();
-        }
+        if (data.cheese) gameState.cheese = data.cheese;
         if (gameState.players[data.id]) gameState.players[data.id].score = data.score;
         checkWinCondition();
     }
@@ -74,7 +70,6 @@ function handleData(data, sender) {
     }
     if (data.type === 'TRAP_PLACE') {
         gameState.traps.push(data.trap);
-        if (sounds.trap) sounds.trap.play();
     }
 }
 
@@ -88,7 +83,7 @@ function updateLobbyUI() {
 function startGame() {
     const ids = Object.keys(gameState.players);
     const catId = ids[Math.floor(Math.random() * ids.length)];
-    const seed = document.getElementById('host-seed').value || Math.random().toString();
+    const seed = document.getElementById('host-seed').value || "123";
     ids.forEach(id => {
         gameState.players[id].role = (id === catId ? 'cat' : 'mouse');
         gameState.players[id].score = 0;
@@ -141,11 +136,14 @@ function showScreen(id) {
 }
 
 function checkWinCondition() {
-    const win = Object.values(gameState.players).find(p => p.score >= gameState.scoreGoal);
-    if (win && gameState.isStarted) {
+    const sorted = Object.values(gameState.players).sort((a,b) => b.score - a.score);
+    if (sorted[0].score >= gameState.scoreGoal && gameState.isStarted) {
         gameState.isStarted = false;
         confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
-        alert("VINNER: " + win.name);
-        location.reload();
+        
+        document.getElementById('p1').innerText = `1. ${sorted[0].name}`;
+        document.getElementById('p2').innerText = `2. ${sorted[1] ? sorted[1].name : '-'}`;
+        document.getElementById('p3').innerText = `3. ${sorted[2] ? sorted[2].name : '-'}`;
+        showScreen('winner-screen');
     }
 }
