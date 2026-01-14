@@ -1,1 +1,9 @@
-
+#gameCanvas {
+    background-color: #f0f0f0;
+    border: 5px solid #333;
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 800px;
+    height: 600px;
+}
