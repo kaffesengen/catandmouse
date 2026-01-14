@@ -13,7 +13,6 @@
 
     <audio id="snd-tag" src="assets/tag.mp3"></audio>
     <audio id="snd-cheese" src="assets/cheese.mp3"></audio>
-    <audio id="snd-trap" src="assets/trap.mp3"></audio>
 
     <div id="menu" class="screen">
         <h1 class="game-title">MUSEJAKT</h1>
@@ -24,9 +23,8 @@
     <div id="host-screen" class="screen hidden">
         <h2 class="kahoot-header">VERT LOBBY</h2>
         <input type="text" id="host-name" placeholder="Ditt navn">
-        <input type="text" id="host-seed" placeholder="Bane-seed (valgfritt)">
+        <input type="text" id="host-seed" placeholder="Bane-seed (f.eks. tunet15)">
         <div class="code-container">
-            <p>DIN KODE:</p>
             <div id="my-code" class="big-code">----</div>
         </div>
         <div class="lobby-area">
@@ -50,6 +48,16 @@
         <button onclick="location.reload()" class="exit-btn">TILBAKE</button>
     </div>
 
+    <div id="winner-screen" class="screen hidden">
+        <h1 class="game-title">MÅLGANG!</h1>
+        <div class="podium-container">
+            <div class="podium-step podium-2" id="p2">2. -</div>
+            <div class="podium-step podium-1" id="p1">1. -</div>
+            <div class="podium-step podium-3" id="p3">3. -</div>
+        </div>
+        <button onclick="location.reload()" class="primary-btn">TIL MENY</button>
+    </div>
+
     <div id="game-ui" class="hidden">
         <div class="hud-top">
             <div id="timer" class="game-badge">02:00</div>
@@ -65,7 +73,7 @@
                 </div>
                 <button class="ctrl-btn" id="btn-down">▼</button>
             </div>
-            <button class="trap-btn" id="btn-trap">FELLE (E)</button>
+            <button class="trap-btn" id="btn-trap">FELLE<br>(E)</button>
         </div>
         <canvas id="gameCanvas"></canvas>
     </div>
