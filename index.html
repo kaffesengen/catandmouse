@@ -6,7 +6,6 @@
     <title>MUSEJAKT</title>
     <link href="https://fonts.googleapis.com/css2?family=Titan+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
@@ -14,6 +13,7 @@
 
     <audio id="snd-tag" src="assets/tag.mp3"></audio>
     <audio id="snd-cheese" src="assets/cheese.mp3"></audio>
+    <audio id="snd-trap" src="assets/trap.mp3"></audio>
 
     <div id="menu" class="screen">
         <h1 class="game-title">MUSEJAKT</h1>
@@ -22,41 +22,40 @@
     </div>
 
     <div id="host-screen" class="screen hidden">
-        <h2 class="kahoot-header">LOBBY (VERT)</h2>
+        <h2 class="kahoot-header">VERT LOBBY</h2>
         <input type="text" id="host-name" placeholder="Ditt navn">
+        <input type="text" id="host-seed" placeholder="Bane-seed (valgfritt)">
         <div class="code-container">
+            <p>DIN KODE:</p>
             <div id="my-code" class="big-code">----</div>
         </div>
-        
         <div class="lobby-area">
-            <h3>Spillere i lobby:</h3>
+            <h3>Spillere:</h3>
             <div id="host-player-list" class="player-list"></div>
         </div>
-
         <button onclick="initHost()" id="open-lobby-btn" class="primary-btn">ÅPNE LOBBY</button>
-        <button onclick="startGame()" id="start-btn" class="hidden win-btn">START GAME!</button>
+        <button onclick="startGame()" id="start-btn" class="hidden win-btn">START SPILL!</button>
+        <button onclick="location.reload()" class="exit-btn">TILBAKE</button>
     </div>
 
     <div id="join-screen" class="screen hidden">
         <h2 class="kahoot-header">BLI MED</h2>
         <input type="text" id="player-name" placeholder="Ditt navn">
         <input type="tel" id="join-code" pattern="[0-9]*" inputmode="numeric" placeholder="4-sifret kode">
-        
         <div id="join-lobby-info" class="lobby-area hidden">
-            <h3>Venter på verten...</h3>
+            <h3>Venter på vert...</h3>
             <div id="join-player-list" class="player-list"></div>
         </div>
-
         <button onclick="joinGame()" id="join-conn-btn" class="join-btn">KOBLE TIL</button>
+        <button onclick="location.reload()" class="exit-btn">TILBAKE</button>
     </div>
 
     <div id="game-ui" class="hidden">
         <div class="hud-top">
             <div id="timer" class="game-badge">02:00</div>
-            <button onclick="location.reload()" class="win-btn">AVSLUTT</button>
+            <button id="quit-game-btn" onclick="location.reload()" class="win-btn">EXIT</button>
         </div>
         <div id="leaderboard" class="sleek-panel"></div>
-        
         <div class="mobile-controls">
             <div class="d-pad">
                 <button class="ctrl-btn" id="btn-up">▲</button>
@@ -66,7 +65,7 @@
                 </div>
                 <button class="ctrl-btn" id="btn-down">▼</button>
             </div>
-            <button class="trap-btn" id="btn-trap">FELLER</button>
+            <button class="trap-btn" id="btn-trap">FELLE (E)</button>
         </div>
         <canvas id="gameCanvas"></canvas>
     </div>
